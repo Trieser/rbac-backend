@@ -1,37 +1,65 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
 import * as argon from 'argon2';
 import { PrismaService } from '../prisma/prisma.service';
+import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
 export class AuthService {
-    constructor(private readonly prisma: PrismaService) {}
+    constructor(private readonly prisma: PrismaService, private jwt: JwtService) {}
 
-    async register(email:string, password: string) {
-        const hash = await argon.hash(password)
+  async register(body: { email: string; password: string } | string | undefined) {
+      console.log('register body raw:', body, 'type:', typeof body);
 
-        return this.prisma.user.create({
-            data: {
-                email,
-                password: hash,
-            }
-        })
+      // Support cases where body might come as a JSON string
+      if (typeof body === 'string') {
+        try {
+          body = JSON.parse(body) as { email: string; password: string };
+        } catch {
+          throw new BadRequestException('Invalid JSON body');
+        }
+      }
+
+      if (!body || typeof body !== 'object') {
+        throw new BadRequestException('Email and password are required');
+      }
+
+      const { email, password } = body as { email: string; password: string };
+
+      if (!email || !password) {
+        throw new BadRequestException('Email and password are required');
+      }
+
+      const hash = await argon.hash(password);
+      return this.prisma.user.create({
+        data: {
+          email,
+          password: hash,
+        },
+      });
     }
 
-    async login(email:string, password: string) {
+    async login(body: { email: string; password: string }) {
+        console.log(body);
         const user = await this.prisma.user.findUnique({
-            where: { email },
-        })
-
+          where: { email: body.email },
+        });
+      
         if (!user) {
-            throw new UnauthorizedException('Invalid credentials');
+          throw new UnauthorizedException('Invalid credentials');
         }
-
-        const valid = await argon.verify(user.password, password)
-
-        if (!valid) {
-            throw new UnauthorizedException('Invalid credentials');
+      
+        const passwordValid = await argon.verify(user.password, body.password);
+        if (!passwordValid) {
+          throw new UnauthorizedException('Invalid credentials');
         }
-
-        return user;
-    }
+      
+        const payload = {
+          sub: user.id,
+          email: user.email,
+        };
+      
+        return {
+          accessToken: await this.jwt.signAsync(payload),
+        };
+      }
 }

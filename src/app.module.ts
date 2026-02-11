@@ -18,7 +18,7 @@ ConfigModule.forRoot({
 
 
 @Module({
-  imports: [ConfigModule, AuthModule, UsersModule, RolesModule, PermissionsModule, RbacModule, AuditLogModule, PrismaModule],
+  imports: [ConfigModule.forRoot({ isGlobal: true }), AuthModule, UsersModule, RolesModule, PermissionsModule, RbacModule, AuditLogModule, PrismaModule],
   controllers: [AppController, HealthController],
   providers: [AppService, PrismaService],
   exports: [PrismaService],
