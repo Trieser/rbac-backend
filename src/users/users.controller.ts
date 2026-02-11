@@ -10,7 +10,18 @@ export class UsersController {
   @Get()
   async getUsers() {
     return this.prisma.user.findMany({
-      include: { roles: true },
+      select: {
+        id: true,
+        email: true,
+        createdAt: true,
+        updatedAt: true,
+        roles: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
     });
   }
 
@@ -18,7 +29,18 @@ export class UsersController {
   async getUser(@Param('userId') userId: string) {
     return this.prisma.user.findUnique({
       where: { id: userId },
-      include: { roles: true },
+      select: {
+        id: true,
+        email: true,
+        createdAt: true,
+        updatedAt: true,
+        roles: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
     });
   }
 
@@ -34,7 +56,7 @@ export class UsersController {
           connect: { id: body.roleId },
         },
       },
-      include: { roles: true },
+      include: { roles: { select: { id: true, name: true } } },
     });
   }
 }
